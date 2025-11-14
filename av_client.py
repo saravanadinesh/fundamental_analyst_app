@@ -88,6 +88,8 @@ def build_ttm_from_statement(stmt: Optional[Dict[str, Any]]) -> Optional[Dict[st
         if k in ("fiscalDateEnding", "reportedCurrency"):
             ttm[k] = latest4[0].get(k)
             continue
+        # Quarterly report values from API are strings; convert to numeric.
+        # Handle string "None" by converting to Python None.
         vals = [_convert_num(q.get(k)) for q in latest4]
         if all(v is None for v in vals):
             ttm[k] = None
@@ -140,7 +142,7 @@ def compute_5yr_cagr_from_annuals(stmt: Optional[Dict[str, Any]], value_key: str
         return None
 
 
-def fetch_company_overview(ticker: str, av_key: Optional[str] = None, use_cache: bool = True, cache_dir: Optional[str] = None) -> Dict[str, Any]:
+def fetch_company_overview(ticker: str, av_key: str, use_cache: bool = True, cache_dir: Optional[str] = None) -> Dict[str, Any]:
     """Fetch company OVERVIEW from AlphaVantage (uses cache if enabled).
 
     Returns the parsed JSON dict for the OVERVIEW endpoint.
@@ -229,7 +231,7 @@ def fetch_company_overview(ticker: str, av_key: Optional[str] = None, use_cache:
     return data
 
 
-def fetch_company_ttm(ticker: str, av_key: Optional[str] = None, use_cache: bool = True, cache_dir: Optional[str] = None) -> Dict[str, Any]:
+def fetch_company_ttm(ticker: str, av_key: str, use_cache: bool = True, cache_dir: Optional[str] = None) -> Dict[str, Any]:
     """Fetch INCOME_STATEMENT, BALANCE_SHEET and CASH_FLOW, construct TTM statements.
 
     Args:
