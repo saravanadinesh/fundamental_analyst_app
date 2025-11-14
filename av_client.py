@@ -135,7 +135,7 @@ def compute_5yr_cagr_from_annuals(stmt: Optional[Dict[str, Any]], value_key: str
             return None
         years = 5
         cagr = (float(v_latest) / float(v_earlier)) ** (1.0 / years) - 1.0
-        return float(cagr)
+        return round(float(cagr),2)
     except Exception:
         return None
 
@@ -220,7 +220,7 @@ def fetch_company_overview(ticker: str, av_key: Optional[str] = None, use_cache:
     except Exception:
         rev_cagr = None
     # store as a float or None
-    data["rev_cagr_5y"] = rev_cagr
+    data["RevCAGR5y"] = rev_cagr
 
     try:
         _save_to_cache(cdir, symbol, dtype, data)
@@ -282,21 +282,22 @@ def fetch_company_ttm(ticker: str, av_key: Optional[str] = None, use_cache: bool
     }
 
 
-def compute_financial_metrics(ticker: str, av_key: Optional[str] = None, use_cache: bool = True, cache_dir: Optional[str] = None) -> Dict[str, Any]:
+def compute_financial_metrics(ticker: str, av_key: str, use_cache: bool = True, cache_dir: Optional[str] = None) -> Dict[str, Any]:
     """Compute a small set of financial ratios using TTM statements and overview.
 
-    Returns a dictionary with the following keys:
-      - Revenue
-      - Gross margin
-      - EBIT margin
-      - Net margin
-      - Receivable days
-      - Inventory days
-      - Payable days
-      - Debt to Equity ratio
-      - return_on_capital (from ReturnOnAssetsTTM in overview)
-      - return_on_equity (from ReturnOnEquityTTM in overview)
+    Returns a dictionary with the following keys (all lowercase with spaces):
+      - revenue
+      - gross margin
+      - ebit margin
+      - net margin
+      - receivable days
+      - inventory days
+      - payable days
+      - debt to equity ratio
+      - return on capital (from ReturnOnAssetsTTM in overview)
+      - return on equity (from ReturnOnEquityTTM in overview)
       - beta (from overview Beta)
+      - rev cagr 5y
 
     The function is defensive: missing data yields None for each metric that
     cannot be computed.
@@ -326,18 +327,18 @@ def compute_financial_metrics(ticker: str, av_key: Optional[str] = None, use_cac
     # directly read the expected keys from the TTM dict.
     revenue = income.get("totalRevenue")
     gross_profit = income.get("grossProfit")
-    operating_income = income.get("operatingIncome") or income.get("ebit")
+    operating_income = income.get("operatingIncome")
     net_income = income.get("netIncome")
-    cost_of_revenue = income.get("costOfRevenue") or income.get("costofGoodsAndServicesSold")
+    cost_of_revenue = income.get("costOfRevenue")
 
     # Balance sheet items (point-in-time) — use canonical quarterly report keys
-    net_receivables = bal.get("currentNetReceivables") or bal.get("netReceivables")
+    net_receivables = bal.get("currentNetReceivables")
     inventory = bal.get("inventory")
-    accounts_payable = bal.get("currentAccountsPayable") or bal.get("current_accounts_payable") or bal.get("accountsPayable")
+    accounts_payable = bal.get("currentAccountsPayable")
     short_term_debt = bal.get("shortTermDebt")
     long_term_debt = bal.get("longTermDebt")
     # AlphaVantage sometimes provides a combined shortLongTermDebtTotal
-    total_debt = bal.get("shortLongTermDebtTotal") or bal.get("totalDebt")
+    total_debt = bal.get("shortLongTermDebtTotal") 
     total_equity = bal.get("totalShareholderEquity")
 
     # Derive total debt if needed
@@ -357,9 +358,9 @@ def compute_financial_metrics(ticker: str, av_key: Optional[str] = None, use_cac
         except Exception:
             return None
 
-    gross_margin = _safe_div(gross_profit, revenue)
-    ebit_margin = _safe_div(operating_income, revenue)
-    net_margin = _safe_div(net_income, revenue)
+    gross_margin = round(_safe_div(gross_profit, revenue), 2) if _safe_div(gross_profit, revenue) is not None else None
+    ebit_margin = round(_safe_div(operating_income, revenue), 2) if _safe_div(operating_income, revenue) is not None else None
+    net_margin = round(_safe_div(net_income, revenue), 2) if _safe_div(net_income, revenue) is not None else None
 
     # For days calculations we use annualized TTM revenue or COGS
     cogs = cost_of_revenue
@@ -372,40 +373,40 @@ def compute_financial_metrics(ticker: str, av_key: Optional[str] = None, use_cac
 
     receivable_days = None
     if net_receivables is not None and revenue is not None and revenue != 0:
-        receivable_days = float(net_receivables) / float(revenue) * 365.0
+        receivable_days = int(float(net_receivables) / float(revenue) * 365.0)
 
     inventory_days = None
     if inventory is not None and cogs is not None and cogs != 0:
-        inventory_days = float(inventory) / float(cogs) * 365.0
+        inventory_days = int(float(inventory) / float(cogs) * 365.0)
 
     payable_days = None
     if accounts_payable is not None and cogs is not None and cogs != 0:
-        payable_days = float(accounts_payable) / float(cogs) * 365.0
+        payable_days = int(float(accounts_payable) / float(cogs) * 365.0)
 
     debt_to_equity = None
     if total_debt is not None and total_equity is not None and total_equity != 0:
-        debt_to_equity = float(total_debt) / float(total_equity)
+        debt_to_equity = round(float(total_debt) / float(total_equity),1)
 
     # Overview-derived items
-    return_on_capital = _num(overview.get("ReturnOnAssetsTTM")) or _num(overview.get("returnOnAssetsTTM"))
-    return_on_equity = _num(overview.get("ReturnOnEquityTTM")) or _num(overview.get("returnOnEquityTTM"))
-    beta = _num(overview.get("Beta")) or _num(overview.get("beta"))
+    return_on_capital = overview.get("ReturnOnAssetsTTM")
+    return_on_equity = overview.get("ReturnOnEquityTTM")
+    beta = round(overview.get("Beta"),2) if overview.get("Beta") is not None else None
     # revenue 5-year CAGR is computed and stored in the overview as rev_cagr_5y
-    rev_cagr = _num(overview.get("rev_cagr_5y")) or _num(overview.get("rev_cagr"))
+    rev_cagr = overview.get("RevCAGR5y")
 
     result = {
-        "Revenue": revenue,
-        "Gross margin": gross_margin,
-        "EBIT margin": ebit_margin,
-        "Net margin": net_margin,
-        "Receivable days": receivable_days,
-        "Inventory days": inventory_days,
-        "Payable days": payable_days,
-        "Debt to Equity ratio": debt_to_equity,
-        "return_on_capital": return_on_capital,
-        "return_on_equity": return_on_equity,
+        "revenue": revenue,
+        "gross margin": gross_margin,
+        "ebit margin": ebit_margin,
+        "net margin": net_margin,
+        "receivable days": receivable_days,
+        "inventory days": inventory_days,
+        "payable days": payable_days,
+        "debt to equity ratio": debt_to_equity,
+        "return on capital": return_on_capital,
+        "return on equity": return_on_equity,
         "beta": beta,
-        "rev_cagr_5y": rev_cagr,
+        "rev cagr 5y": rev_cagr,
     }
 
     return result

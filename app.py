@@ -2,6 +2,7 @@
 import streamlit as st
 import pandas as pd
 from industry_info import get_industry_info
+from av_client import compute_financial_metrics
 
 # Page config
 st.set_page_config(page_title="Industry Info Viewer", layout="wide")
@@ -58,6 +59,24 @@ if "submitted_ticker" in st.session_state and st.session_state.submitted_ticker:
             market_data = industry_info["market_size"]
             # Format market size as $<n>B (with commas). The source values are in billions.
             ms = market_data.get("marketsize")
+            # fetch company metrics (may be missing)
+            try:
+                company_metrics = compute_financial_metrics(ticker, av_key="YD9VPN2U7FKOT5VT")
+            except Exception:
+                company_metrics = {}
+
+            # company revenue from compute_financial_metrics is in raw dollars; convert to billions
+            comp_rev = company_metrics.get("revenue")
+            comp_rev_display = None
+            if comp_rev is not None:
+                try:
+                    v = float(comp_rev) / 1e9
+                    if abs(v - int(v)) < 1e-6:
+                        comp_rev_display = f"${int(v):,}B"
+                    else:
+                        comp_rev_display = f"${v:,.1f}B"
+                except Exception:
+                    comp_rev_display = str(comp_rev)
             if ms is None:
                 ms_display = None
             else:
@@ -72,13 +91,19 @@ if "submitted_ticker" in st.session_state and st.session_state.submitted_ticker:
                     ms_display = str(ms)
 
             df_market = pd.DataFrame({
-                "Metric": ["Market Size", "Past CAGR", "Next CAGR (2y)", "Next CAGR (5y)"],
-                "Value": [
+                "Metric": ["Revenue", "Past CAGR (5y)", "Next CAGR (2y)", "Next CAGR (5y)"],
+                "Industry": [
                     ms_display,
-                    f"{market_data.get('past_cagr')}%" if market_data.get("past_cagr") is not None else None,
+                    f"{market_data.get('past_cagr_5y')}%" if market_data.get("past_cagr_5y") is not None else None,
                     f"{market_data.get('next_cagr_2y')}%" if market_data.get("next_cagr_2y") is not None else None,
                     f"{market_data.get('next_cagr_5y')}%" if market_data.get("next_cagr_5y") is not None else None,
-                ]
+                ],
+                "Company": [
+                    comp_rev_display,
+                    f"{int(company_metrics.get('rev cagr 5y')*100)}%" if company_metrics.get("rev cagr 5y") is not None else None,
+                    None,
+                    None,
+                ],
             })
             st.dataframe(df_market, use_container_width=True, hide_index=True)
         
@@ -86,15 +111,42 @@ if "submitted_ticker" in st.session_state and st.session_state.submitted_ticker:
         with col2:
             st.subheader("📈 Profitability")
             profit_data = industry_info["profitability"]
+            # Profitability table with company column
+            # company metrics for margins are returned as ratios (e.g., 0.3) so convert to percent
+            def fmt_pct(x):
+                if x is None:
+                    return None
+                try:
+                    # if fraction (<=1) treat as fraction, else assume already percent
+                    xv = float(x)
+                    if abs(xv) <= 1:
+                        return f"{int(round(xv*100))}%"
+                    return f"{int(round(xv))}%"
+                except Exception:
+                    return str(x)
+
+            comp_gross = company_metrics.get("gross margin")
+            comp_ebit = company_metrics.get("ebit margin")
+            comp_net = company_metrics.get("net margin")
+            comp_roc = company_metrics.get("return on capital")
+            comp_roe = company_metrics.get("return on equity")
+
             df_profit = pd.DataFrame({
                 "Metric": ["Gross Margin", "EBIT Margin", "Net Margin", "ROC", "ROE"],
-                "Value": [
+                "Industry": [
                     f"{profit_data.get('gross_margin')}%" if profit_data.get("gross_margin") is not None else None,
                     f"{profit_data.get('ebit_margin')}%" if profit_data.get("ebit_margin") is not None else None,
                     f"{profit_data.get('net_margin')}%" if profit_data.get("net_margin") is not None else None,
                     f"{profit_data.get('roc')}%" if profit_data.get("roc") is not None else None,
                     f"{profit_data.get('roe')}%" if profit_data.get("roe") is not None else None,
-                ]
+                ],
+                "Company": [
+                    fmt_pct(comp_gross),
+                    fmt_pct(comp_ebit),
+                    fmt_pct(comp_net),
+                    fmt_pct(comp_roc),
+                    fmt_pct(comp_roe),
+                ],
             })
             st.dataframe(df_profit, use_container_width=True, hide_index=True)
         
@@ -105,13 +157,22 @@ if "submitted_ticker" in st.session_state and st.session_state.submitted_ticker:
         with col3:
             st.subheader("⚙️ Efficiency")
             eff_data = industry_info["efficiency"]
+            comp_rec = company_metrics.get("receivable days")
+            comp_inv = company_metrics.get("inventory days")
+            comp_pay = company_metrics.get("payable days")
+
             df_eff = pd.DataFrame({
                 "Metric": ["Receivable Days (DSO)", "Inventory Days (DSI)", "Payable Days (DPO)"],
-                "Value": [
+                "Industry": [
                     str(eff_data.get("receivable_days")) if eff_data.get("receivable_days") is not None else None,
                     str(eff_data.get("inventory_days")) if eff_data.get("inventory_days") is not None else None,
                     str(eff_data.get("payable_days")) if eff_data.get("payable_days") is not None else None,
-                ]
+                ],
+                "Company": [
+                    str(comp_rec) if comp_rec is not None else None,
+                    str(comp_inv) if comp_inv is not None else None,
+                    str(comp_pay) if comp_pay is not None else None,
+                ],
             })
             st.dataframe(df_eff, use_container_width=True, hide_index=True)
         
@@ -119,14 +180,23 @@ if "submitted_ticker" in st.session_state and st.session_state.submitted_ticker:
         with col4:
             st.subheader("⚠️ Risk")
             risk_data = industry_info["risk"]
+            comp_beta = company_metrics.get("beta")
+            comp_de = company_metrics.get("debt to equity ratio")
+
             df_risk = pd.DataFrame({
                 "Metric": ["Number of Firms", "Beta", "D/E Ratio", "Cost of Capital"],
-                "Value": [
-                    risk_data.get("number_of_firms"),
-                    risk_data.get("beta"),
-                    risk_data.get("de"),
+                "Industry": [
+                    str(risk_data.get("number_of_firms")) if risk_data.get("number_of_firms") is not None else None,
+                    str(risk_data.get("beta")) if risk_data.get("beta") is not None else None,
+                    str(risk_data.get("de")) if risk_data.get("de") is not None else None,
                     f"{risk_data.get('cost_of_capital')}%" if risk_data.get("cost_of_capital") is not None else None,
-                ]
+                ],
+                "Company": [
+                    None,
+                    str(comp_beta) if comp_beta is not None else None,
+                    str(comp_de) if comp_de is not None else None,
+                    None,
+                ],
             })
             st.dataframe(df_risk, use_container_width=True, hide_index=True)
         

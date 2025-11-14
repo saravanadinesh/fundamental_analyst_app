@@ -76,7 +76,7 @@ def get_industry_info(company_ticker: str) -> dict:
         "industry_name": indname,
         "market_size": {
             "marketsize": _safe_get(fundamentals_df, indname, "Revenue"),
-            "past_cagr": _safe_get(demand_df, indname, "Revenue CAGR (past 5y)"),
+            "past_cagr_5y": _safe_get(demand_df, indname, "Revenue CAGR (past 5y)"),
             "next_cagr_2y": _safe_get(demand_df, indname, "Revenue CAGR (next 2y)"),
             "next_cagr_5y": _safe_get(demand_df, indname, "Revenue CAGR (next 5y)"),
         },
