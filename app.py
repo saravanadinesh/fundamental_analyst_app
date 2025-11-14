@@ -184,17 +184,17 @@ if "submitted_ticker" in st.session_state and st.session_state.submitted_ticker:
             comp_de = company_metrics.get("debt to equity ratio")
 
             df_risk = pd.DataFrame({
-                "Metric": ["Number of Firms", "Beta", "D/E Ratio", "Cost of Capital"],
+                "Metric": ["Number of Firms", "Beta", "D/E Ratio", "Cost of Equity"],
                 "Industry": [
                     str(risk_data.get("number_of_firms")) if risk_data.get("number_of_firms") is not None else None,
                     str(risk_data.get("beta")) if risk_data.get("beta") is not None else None,
-                    str(risk_data.get("de")) if risk_data.get("de") is not None else None,
-                    f"{risk_data.get('cost_of_capital')}%" if risk_data.get("cost_of_capital") is not None else None,
+                    f"{int(risk_data.get('de'))}%" if risk_data.get("de") is not None else None,
+                    f"{risk_data.get('cost_of_equity')}%" if risk_data.get("cost_of_equity") is not None else None,
                 ],
                 "Company": [
                     None,
                     str(comp_beta) if comp_beta is not None else None,
-                    str(comp_de) if comp_de is not None else None,
+                    f"{int(round(comp_de*100))}%" if comp_de is not None else None,
                     None,
                 ],
             })

@@ -96,7 +96,7 @@ def get_industry_info(company_ticker: str) -> dict:
             "number_of_firms": _safe_get(risk_df, indname, "Number of firms"),
             "beta": _safe_get(risk_df, indname, "Beta"),
             "de": _safe_get(risk_df, indname, "D/E"),
-            "cost_of_capital": _safe_get(risk_df, indname, "Cost of Capital"),
+            "cost_of_equity": _safe_get(risk_df, indname, "Cost of Equity"),
         },
         "multiples": {
             "current_pe": _safe_get(multiples_df, indname, "Current PE"),
