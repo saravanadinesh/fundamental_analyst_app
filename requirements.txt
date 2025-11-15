@@ -1,10 +1,5 @@
 streamlit
 pandas
 numpy
-pathlib
-json
-os
-typing
 urllib3
 requests
-sys
