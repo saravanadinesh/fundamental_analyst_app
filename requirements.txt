@@ -4,3 +4,4 @@ numpy
 urllib3
 requests
 openpyxl
+xlrd
