@@ -8,6 +8,7 @@ from av_client import compute_financial_metrics
 st.set_page_config(page_title="Fundamental Analyst App", layout="wide")
 
 st.title("Fundamental Analyst App")
+st.markdown("Data courtesy of [Prof. Aswath Damodaran](https://pages.stern.nyu.edu/~adamodar/) and Alpha Vantage.")
 st.markdown(
     "Enter a company ticker in the side panel (use >> to expand) to view the company in the context of industry metrics including market size, profitability, efficiency and risk."
 )
