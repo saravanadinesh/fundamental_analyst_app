@@ -9,7 +9,7 @@ st.set_page_config(page_title="Fundamental Analyst App", layout="wide")
 
 st.title("Fundamental Analyst App")
 st.markdown(
-    "Enter a company ticker to view the company in the context of industry metrics including market size, profitability, efficiency and risk."
+    "Enter a company ticker in the side panel (use >> to expand) to view the company in the context of industry metrics including market size, profitability, efficiency and risk."
 )
 
 # Sidebar for input
