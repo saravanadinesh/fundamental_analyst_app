@@ -6,7 +6,6 @@ This file was converted from the notebook `industry_info.ipynb` and exposes
 a single function that returns structured industry information for the
 industry of the given company ticker.
 """
-from pprint import pprint
 import json
 import pandas as pd
 import numpy as np
@@ -121,4 +120,4 @@ if __name__ == "__main__":
     if args.json:
         print(json.dumps(info, indent=2, default=str))
     else:
-        pprint(info)
+        print(info)
